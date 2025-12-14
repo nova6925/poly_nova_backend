@@ -1,0 +1,16 @@
+-- CreateTable
+CREATE TABLE "Video" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "title" TEXT NOT NULL,
+    "publishedAt" DATETIME NOT NULL,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- CreateTable
+CREATE TABLE "ViewSnapshot" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "videoId" TEXT NOT NULL,
+    "viewCount" BIGINT NOT NULL,
+    "capturedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "ViewSnapshot_videoId_fkey" FOREIGN KEY ("videoId") REFERENCES "Video" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+);

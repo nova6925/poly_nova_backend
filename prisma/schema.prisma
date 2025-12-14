@@ -1,0 +1,47 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// For local development with SQLite, use:
+// provider = "sqlite"
+// For production with PostgreSQL, use:
+// provider = "postgresql"
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Video {
+  id          String   @id // YouTube Video ID
+  title       String
+  publishedAt DateTime
+  createdAt   DateTime @default(now())
+  snapshots   ViewSnapshot[]
+}
+
+model ViewSnapshot {
+  id        Int      @id @default(autoincrement())
+  videoId   String
+  viewCount BigInt
+  capturedAt DateTime @default(now())
+  video     Video    @relation(fields: [videoId], references: [id])
+}
+
+model Forecast {
+  id            Int      @id @default(autoincrement())
+  source        String   // "NWS", "ECMWF", "OWM"
+  capturedAt    DateTime @default(now())
+  targetDate    DateTime // Nov 19, 2025
+  predictedHigh Float    // Degrees Fahrenheit
+  rawResponse   String?  // Store full JSON for debugging
+}
+
+model Resolution {
+  id          Int      @id @default(autoincrement())
+  targetDate  DateTime @unique
+  actualHigh  Float    // From Wunderground
+  finalizedAt DateTime @default(now())
+}
