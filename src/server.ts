@@ -146,10 +146,16 @@ fastify.post('/weather/resolve', async (request, reply) => {
     return { status: 'success', message: 'Resolution triggered', targetDate: date };
 });
 
+// Root route
+fastify.get('/', async () => {
+    return { status: 'ok', message: 'Poly Nova Backend is running' };
+});
+
 const start = async () => {
     try {
-        await fastify.listen({ port: 3000 });
-        console.log('Server running on http://localhost:3000');
+        const port = process.env.PORT ? parseInt(process.env.PORT) : 3000;
+        await fastify.listen({ port, host: '0.0.0.0' });
+        console.log(`Server running on port ${port}`);
 
         // Initialize Tracker Cache
         await initializeTracker(prisma);
