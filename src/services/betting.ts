@@ -54,7 +54,7 @@ export async function initClobCredentials(): Promise<boolean> {
         const client = new ClobClient(CLOB_API, 137, wallet as any, undefined, 2, PROXY_WALLET);
 
         // Create or derive API credentials
-        const creds = await client.createOrDeriveApiCreds();
+        const creds = await client.createOrDeriveApiKey();
 
         console.log('[Bot] ✅ NEW CLOB CREDENTIALS GENERATED! ADD THESE TO RAILWAY:');
         console.log('='.repeat(60));
