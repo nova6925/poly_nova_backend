@@ -186,15 +186,29 @@ fastify.get('/markets/search', async (request, reply) => {
             clobTokenIds: m.clobTokenIds
         })), null, 2));
 
-        const markets = event.markets.map((m: any) => ({
-            id: m.id,
-            title: m.groupItemTitle || m.question,
-            yesTokenId: m.clobTokenIds?.[0] || null,
-            noTokenId: m.clobTokenIds?.[1] || null,
-            tokenId: m.clobTokenIds?.[0] || null, // Keep for backwards compat
-            outcome: m.outcome,
-            active: m.active
-        }));
+        const markets = event.markets.map((m: any) => {
+            // clobTokenIds comes as a JSON string, need to parse it
+            let tokenIds: string[] = [];
+            if (m.clobTokenIds) {
+                try {
+                    tokenIds = typeof m.clobTokenIds === 'string'
+                        ? JSON.parse(m.clobTokenIds)
+                        : m.clobTokenIds;
+                } catch (e) {
+                    console.error('Failed to parse clobTokenIds:', m.clobTokenIds);
+                }
+            }
+
+            return {
+                id: m.id,
+                title: m.groupItemTitle || m.question,
+                yesTokenId: tokenIds[0] || null,
+                noTokenId: tokenIds[1] || null,
+                tokenId: tokenIds[0] || null,
+                outcome: m.outcome,
+                active: m.active
+            };
+        });
 
         return {
             eventId: event.id,
