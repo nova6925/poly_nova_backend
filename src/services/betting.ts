@@ -39,9 +39,10 @@ export async function getBalance(): Promise<{ usdc: number; positions: any[] } |
             passphrase: CLOB_PASSPHRASE
         });
 
-        // Get balance info
-        const balanceInfo = await client.getBalanceAllowance();
-        console.log(`[Bot] 💰 Balance: $${(parseFloat(balanceInfo.balance) / 1e6).toFixed(2)} USDC`);
+        // Get USDC balance
+        const balanceInfo = await client.getBalanceAllowance({ asset_type: 'USDC' } as any);
+        const usdcBalance = parseFloat(balanceInfo.balance || '0') / 1e6;
+        console.log(`[Bot] 💰 Balance: $${usdcBalance.toFixed(2)} USDC`);
 
         return {
             usdc: parseFloat(balanceInfo.balance) / 1e6,
