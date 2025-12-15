@@ -12,6 +12,10 @@ const CLOB_API_KEY = process.env.POLYMARKET_API_KEY;
 const CLOB_API_SECRET = process.env.POLYMARKET_API_SECRET;
 const CLOB_PASSPHRASE = process.env.POLYMARKET_PASSPHRASE;
 
+// Polymarket proxy wallet (funder address - where funds are held)
+// This is different from your MetaMask EOA wallet
+const PROXY_WALLET = process.env.POLYMARKET_PROXY_WALLET;
+
 // Placeholder for init function (credentials now from env)
 export async function initClobCredentials(): Promise<boolean> {
     if (CLOB_API_KEY && CLOB_API_SECRET && CLOB_PASSPHRASE) {
@@ -32,12 +36,13 @@ export async function getBalance(): Promise<{ usdc: number; positions: any[] } |
     try {
         const provider = new ethers.providers.JsonRpcProvider(POLYGON_RPC);
         const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
+        const funderAddress = PROXY_WALLET || wallet.address;
 
         const client = new ClobClient(CLOB_API, 137, wallet as any, {
             key: CLOB_API_KEY,
             secret: CLOB_API_SECRET,
             passphrase: CLOB_PASSPHRASE
-        });
+        }, PROXY_WALLET ? 2 : 0, funderAddress);
 
         // Get USDC balance
         const balanceInfo = await client.getBalanceAllowance({ asset_type: 'USDC' } as any);
@@ -130,15 +135,20 @@ export async function placeBet(request: BetRequest) {
         const provider = new ethers.providers.JsonRpcProvider(POLYGON_RPC);
         const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
 
-        // Initialize CLOB Client with BOTH wallet (for signing) AND API credentials (for auth)
+        // Use proxy wallet as funder if available (Polymarket's Gnosis Safe proxy system)
+        // signature_type: 2 = POLY_GNOSIS_SAFE (browser wallet proxy)
+        const funderAddress = PROXY_WALLET || wallet.address;
+
+        // Initialize CLOB Client with wallet (for signing) AND API credentials (for auth)
         const client = new ClobClient(CLOB_API, 137, wallet as any, {
             key: CLOB_API_KEY!,
             secret: CLOB_API_SECRET!,
             passphrase: CLOB_PASSPHRASE!
-        });
+        }, PROXY_WALLET ? 2 : 0, funderAddress);  // signature_type: 2=GNOSIS_SAFE if proxy, 0=EOA otherwise
 
         console.log(`[Bot] 💸 PLACING ORDER: BUY ${side} on "${marketTitle}" for $${amount}`);
         console.log(`[Bot] Token ID: ${request.tokenId}`);
+        console.log(`[Bot] Funder (proxy): ${funderAddress}`);
 
         // REAL BETTING ENABLED
         // Step 1: Create and sign the order
