@@ -76,8 +76,8 @@ export async function placeBet(request: BetRequest) {
     }
 
     try {
-        // Initialize wallet for signing
-        const provider = new ethers.JsonRpcProvider(POLYGON_RPC);
+        // Initialize wallet for signing (ethers v5)
+        const provider = new ethers.providers.JsonRpcProvider(POLYGON_RPC);
         const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
 
         // Initialize CLOB Client with BOTH wallet (for signing) AND API credentials (for auth)
