@@ -1,5 +1,5 @@
 
-import { ClobClient } from '@polymarket/clob-client';
+import { ClobClient, Side } from '@polymarket/clob-client';
 import { ethers } from 'ethers';
 
 const CLOB_API = 'https://clob.polymarket.com';
@@ -89,7 +89,7 @@ export async function placeBet(request: BetRequest) {
         const order = await client.createOrder({
             tokenID: request.tokenId!,
             price: 0.99,
-            side: side === 'YES' ? 'BUY' : 'SELL',
+            side: side === 'YES' ? Side.BUY : Side.SELL,
             size: amount,
             feeRateBps: 0,
             nonce: 0
