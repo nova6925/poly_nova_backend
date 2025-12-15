@@ -182,7 +182,9 @@ fastify.get('/markets/search', async (request, reply) => {
         const markets = event.markets.map((m: any) => ({
             id: m.id,
             title: m.groupItemTitle || m.question,
-            tokenId: m.clobTokenIds?.[0] || null,
+            yesTokenId: m.clobTokenIds?.[0] || null,
+            noTokenId: m.clobTokenIds?.[1] || null,
+            tokenId: m.clobTokenIds?.[0] || null, // Keep for backwards compat
             outcome: m.outcome,
             active: m.active
         }));

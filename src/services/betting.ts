@@ -88,6 +88,7 @@ export async function placeBet(request: BetRequest) {
         });
 
         console.log(`[Bot] 💸 PLACING ORDER: BUY ${side} on "${marketTitle}" for $${amount}`);
+        console.log(`[Bot] Token ID: ${request.tokenId}`);
 
         // REAL BETTING ENABLED
         const order = await client.createOrder({
