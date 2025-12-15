@@ -8,6 +8,7 @@ import { collectForecasts } from './services/weather/collector';
 import { resolveWeather } from './services/weather/actual-weather';
 import { calculateAccuracy } from './services/weather/accuracy';
 import { runWeatherScraper } from './services/weather/scraper';
+import { placeBet, handleWeatherTrigger } from './services/betting';
 
 
 // Fix BigInt serialization
@@ -218,6 +219,46 @@ fastify.post('/markets/bet', async (request, reply) => {
         return data;
     } catch (err: any) {
         return reply.code(500).send({ error: `Bot unreachable: ${err.message}` });
+    }
+});
+
+// ========== BOT API ==========
+
+const MARKET_SLUG = process.env.MARKET_SLUG || 'highest-temperature-in-nyc-on-december-15';
+
+// Trigger from weather scraper
+fastify.post('/bot/trigger', async (request, reply) => {
+    const body = request.body as { maxTemp: number; condition: string };
+
+    if (!body.maxTemp) {
+        return reply.code(400).send({ error: 'maxTemp required' });
+    }
+
+    try {
+        const result = await handleWeatherTrigger(body, MARKET_SLUG);
+        return result;
+    } catch (err: any) {
+        return reply.code(500).send({ error: err.message });
+    }
+});
+
+// Manual bet
+fastify.post('/bot/bet', async (request, reply) => {
+    const body = request.body as { market: string; amount?: number; side?: string };
+
+    if (!body.market) {
+        return reply.code(400).send({ error: 'market required' });
+    }
+
+    try {
+        const result = await placeBet({
+            marketTitle: body.market,
+            amount: body.amount,
+            side: body.side as 'YES' | 'NO'
+        });
+        return result;
+    } catch (err: any) {
+        return reply.code(500).send({ error: err.message });
     }
 });
 
