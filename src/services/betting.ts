@@ -77,19 +77,17 @@ export async function placeBet(request: BetRequest) {
         await client.deriveApiKey();
         console.log(`[Bot] 💸 PLACING ORDER: BUY ${side} on "${marketTitle}" for $${amount}`);
 
-        // UNCOMMENT FOR REAL BETTING
-        /*
+        // REAL BETTING ENABLED
         const order = await client.createOrder({
-            tokenID: request.tokenId,
+            tokenID: request.tokenId!,
             price: 0.99,
             side: side === 'YES' ? 'BUY' : 'SELL',
             size: amount,
             feeRateBps: 0,
-            nonce: 0 
+            nonce: 0
         });
-        return { success: true, orderId: order.orderID };
-        */
-        return { simulated: true, market: marketTitle, amount, side };
+        console.log(`[Bot] ✅ Order Placed: ${order.orderID}`);
+        return { success: true, orderId: order.orderID, market: marketTitle, amount, side };
 
     } catch (err: any) {
         console.error('[Bot] Betting Failed:', err.message);
