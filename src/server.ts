@@ -146,6 +146,15 @@ fastify.post('/weather/resolve', async (request, reply) => {
     return { status: 'success', message: 'Resolution triggered', targetDate: date };
 });
 
+// Get Weather Logs (Scraper Data)
+fastify.get('/weather/logs', async () => {
+    const logs = await prisma.weatherLog.findMany({
+        orderBy: { createdAt: 'desc' },
+        take: 50
+    });
+    return logs;
+});
+
 // Root route
 fastify.get('/', async () => {
     return { status: 'ok', message: 'Poly Nova Backend is running' };
