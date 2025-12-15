@@ -7,6 +7,7 @@ import { trackVideos, initializeTracker } from './services/tracker';
 import { collectForecasts } from './services/weather/collector';
 import { resolveWeather } from './services/weather/actual-weather';
 import { calculateAccuracy } from './services/weather/accuracy';
+import { runWeatherScraper } from './services/weather/scraper';
 
 
 // Fix BigInt serialization
@@ -185,6 +186,12 @@ const start = async () => {
         cron.schedule('0 */4 * * *', async () => {
             console.log('Running Weather Forecast Collector...');
             await collectForecasts();
+        });
+
+        // Schedule Weather Scraper (Wunderground) - Every 1 minute
+        cron.schedule('* * * * *', async () => {
+            console.log('Running Weather Scraper...');
+            await runWeatherScraper(prisma);
         });
 
     } catch (err) {
