@@ -244,14 +244,15 @@ fastify.post('/bot/trigger', async (request, reply) => {
 
 // Manual bet
 fastify.post('/bot/bet', async (request, reply) => {
-    const body = request.body as { market: string; amount?: number; side?: string };
+    const body = request.body as { tokenId: string; market: string; amount?: number; side?: string };
 
-    if (!body.market) {
-        return reply.code(400).send({ error: 'market required' });
+    if (!body.market || !body.tokenId) {
+        return reply.code(400).send({ error: 'market and tokenId required' });
     }
 
     try {
         const result = await placeBet({
+            tokenId: body.tokenId,
             marketTitle: body.market,
             amount: body.amount,
             side: body.side as 'YES' | 'NO'
