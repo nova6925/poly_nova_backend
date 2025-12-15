@@ -99,8 +99,8 @@ export async function placeBet(request: BetRequest) {
             feeRateBps: 0,
             nonce: 0
         });
-        console.log(`[Bot] ✅ Order Placed: ${order.orderID}`);
-        return { success: true, orderId: order.orderID, market: marketTitle, amount, side };
+        console.log(`[Bot] ✅ Order Placed:`, JSON.stringify(order, null, 2));
+        return { success: true, order, market: marketTitle, amount, side };
 
     } catch (err: any) {
         console.error('[Bot] Betting Failed:', err.message);
