@@ -91,7 +91,8 @@ export async function placeBet(request: BetRequest) {
         console.log(`[Bot] Token ID: ${request.tokenId}`);
 
         // REAL BETTING ENABLED
-        const order = await client.createOrder({
+        // Step 1: Create and sign the order
+        const signedOrder = await client.createOrder({
             tokenID: request.tokenId!,
             price: 0.99,
             side: side === 'YES' ? Side.BUY : Side.SELL,
@@ -99,8 +100,13 @@ export async function placeBet(request: BetRequest) {
             feeRateBps: 0,
             nonce: 0
         });
-        console.log(`[Bot] ✅ Order Placed:`, JSON.stringify(order, null, 2));
-        return { success: true, order, market: marketTitle, amount, side };
+        console.log(`[Bot] ✅ Order Created:`, JSON.stringify(signedOrder, null, 2));
+
+        // Step 2: Submit the order to the exchange
+        const response = await client.postOrder(signedOrder);
+        console.log(`[Bot] ✅ Order Submitted:`, JSON.stringify(response, null, 2));
+
+        return { success: true, order: signedOrder, response, market: marketTitle, amount, side };
 
     } catch (err: any) {
         console.error('[Bot] Betting Failed:', err.message);
