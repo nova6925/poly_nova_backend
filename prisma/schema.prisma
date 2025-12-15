@@ -10,8 +10,9 @@ generator client {
 // For production with PostgreSQL, use:
 // provider = "postgresql"
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model Video {
