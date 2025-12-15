@@ -25,22 +25,22 @@ export async function checkFeed(prisma: PrismaClient) {
             return;
         }
 
-        // Check if video exists
-        const existing = await prisma.video.findUnique({ where: { id: videoId } });
+        console.log(`Processing video: ${title} (${videoId})`);
 
-        if (!existing) {
-            console.log(`New video detected: ${title} (${videoId})`);
-            await prisma.video.create({
-                data: {
-                    id: videoId,
-                    title,
-                    publishedAt
-                }
-            });
-            // Add to tracker cache
-            addActiveVideo({ id: videoId, publishedAt });
-            console.log('Video added to database and tracker.');
-        }
+        // Use upsert to handle race conditions safely
+        await prisma.video.upsert({
+            where: { id: videoId },
+            update: { title }, // Update title just in case
+            create: {
+                id: videoId,
+                title,
+                publishedAt
+            }
+        });
+
+        // Always ensure it's in the tracker (idempotent)
+        addActiveVideo({ id: videoId, publishedAt });
+        console.log('Video ensured in database and tracker.');
 
         // Update cache
         lastProcessedVideoId = videoId;
