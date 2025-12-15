@@ -69,15 +69,19 @@ function mapTempToMarket(temp: number, markets: any[]) {
 export async function placeBet(request: BetRequest) {
     const { marketTitle, amount = DEFAULT_BET_SIZE, side = 'YES' } = request;
 
-    // Check for Builder API credentials first
-    if (!BUILDER_API_KEY) {
-        console.log(`[Bot] ⚠️ SIMULATION: No API key configured. Would BUY ${side} on "${marketTitle}" for $${amount}`);
+    // Check for Builder API credentials AND private key
+    if (!BUILDER_API_KEY || !process.env.PRIVATE_KEY) {
+        console.log(`[Bot] ⚠️ SIMULATION: Missing API key or private key. Would BUY ${side} on "${marketTitle}" for $${amount}`);
         return { simulated: true, market: marketTitle, amount, side };
     }
 
     try {
-        // Initialize CLOB Client with Builder API credentials
-        const client = new ClobClient(CLOB_API, 137, undefined, {
+        // Initialize wallet for signing
+        const provider = new ethers.JsonRpcProvider(POLYGON_RPC);
+        const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
+
+        // Initialize CLOB Client with BOTH wallet (for signing) AND API credentials (for auth)
+        const client = new ClobClient(CLOB_API, 137, wallet as any, {
             key: BUILDER_API_KEY,
             secret: BUILDER_API_SECRET!,
             passphrase: BUILDER_PASSPHRASE!
