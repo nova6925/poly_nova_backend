@@ -7,59 +7,49 @@ const GAMMA_API = 'https://gamma-api.polymarket.com';
 const POLYGON_RPC = process.env.RPC_URL || 'https://polygon-rpc.com';
 const DEFAULT_BET_SIZE = parseInt(process.env.BET_SIZE || '5');
 
-// CLOB API Credentials (auto-generated if not provided)
-let CLOB_API_KEY = process.env.POLYMARKET_API_KEY;
-let CLOB_API_SECRET = process.env.POLYMARKET_API_SECRET;
-let CLOB_PASSPHRASE = process.env.POLYMARKET_PASSPHRASE;
-let credentialsInitialized = false;
+// CLOB API Credentials (from environment)
+const CLOB_API_KEY = process.env.POLYMARKET_API_KEY;
+const CLOB_API_SECRET = process.env.POLYMARKET_API_SECRET;
+const CLOB_PASSPHRASE = process.env.POLYMARKET_PASSPHRASE;
 
-// Initialize/derive CLOB credentials on server start
+// Placeholder for init function (credentials now from env)
 export async function initClobCredentials(): Promise<boolean> {
-    if (credentialsInitialized && CLOB_API_KEY && CLOB_API_SECRET && CLOB_PASSPHRASE) {
+    if (CLOB_API_KEY && CLOB_API_SECRET && CLOB_PASSPHRASE) {
+        console.log(`[Bot] ✅ CLOB credentials loaded from env (Key: ${CLOB_API_KEY.substring(0, 8)}...)`);
         return true;
     }
+    console.log('[Bot] ❌ CLOB credentials not set in environment');
+    return false;
+}
 
-    const privateKey = process.env.PRIVATE_KEY;
-    if (!privateKey) {
-        console.log('[Bot] ❌ PRIVATE_KEY not set. Cannot create CLOB credentials.');
-        return false;
+// Get wallet balance from Polymarket
+export async function getBalance(): Promise<{ usdc: number; positions: any[] } | null> {
+    if (!CLOB_API_KEY || !CLOB_API_SECRET || !CLOB_PASSPHRASE || !process.env.PRIVATE_KEY) {
+        console.log('[Bot] Cannot get balance: credentials not set');
+        return null;
     }
-
-    console.log('[Bot] 🔐 Initializing CLOB API credentials...');
 
     try {
         const provider = new ethers.providers.JsonRpcProvider(POLYGON_RPC);
-        const wallet = new ethers.Wallet(privateKey, provider);
-        console.log(`[Bot] Wallet: ${wallet.address}`);
+        const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
 
-        // Create client without credentials to generate/derive them
-        const client = new ClobClient(CLOB_API, 137, wallet as any);
+        const client = new ClobClient(CLOB_API, 137, wallet as any, {
+            key: CLOB_API_KEY,
+            secret: CLOB_API_SECRET,
+            passphrase: CLOB_PASSPHRASE
+        });
 
-        try {
-            // Try to derive existing credentials first
-            const creds = await client.deriveApiKey();
-            console.log('[Bot] Derived creds:', JSON.stringify(creds, null, 2));
-            CLOB_API_KEY = creds.key;
-            CLOB_API_SECRET = creds.secret;
-            CLOB_PASSPHRASE = creds.passphrase;
-            console.log('[Bot] ✅ Derived existing CLOB credentials');
-        } catch {
-            console.log('[Bot] Creating new CLOB credentials...');
-            const creds = await client.createApiKey();
-            console.log('[Bot] Created creds:', JSON.stringify(creds, null, 2));
-            CLOB_API_KEY = creds.key;
-            CLOB_API_SECRET = creds.secret;
-            CLOB_PASSPHRASE = creds.passphrase;
-            console.log('[Bot] ✅ Created new CLOB credentials');
-        }
+        // Get balance info
+        const balanceInfo = await client.getBalanceAllowance();
+        console.log(`[Bot] 💰 Balance: $${(parseFloat(balanceInfo.balance) / 1e6).toFixed(2)} USDC`);
 
-        console.log(`[Bot] API Key: ${CLOB_API_KEY?.substring(0, 8)}...`);
-        credentialsInitialized = true;
-        return true;
-
+        return {
+            usdc: parseFloat(balanceInfo.balance) / 1e6,
+            positions: []
+        };
     } catch (err: any) {
-        console.error('[Bot] ❌ Failed to initialize CLOB credentials:', err.message);
-        return false;
+        console.error('[Bot] Error fetching balance:', err.message);
+        return null;
     }
 }
 
@@ -164,6 +154,9 @@ export async function placeBet(request: BetRequest) {
         // Step 2: Submit the order to the exchange
         const response = await client.postOrder(signedOrder);
         console.log(`[Bot] ✅ Order Submitted:`, JSON.stringify(response, null, 2));
+
+        // Step 3: Check remaining balance
+        await getBalance();
 
         return { success: true, order: signedOrder, response, market: marketTitle, amount, side };
 
