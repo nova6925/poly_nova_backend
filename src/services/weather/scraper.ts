@@ -9,12 +9,21 @@ puppeteer.use(StealthPlugin());
 const TARGET_URL = 'https://www.wunderground.com/hourly/us/ny/new-york-city/KLGA/date/2025-12-15';
 const BOT_TRIGGER_URL = process.env.BOT_TRIGGER_URL || 'http://localhost:4000/trigger';
 
+// Skip scraper on cloud (no Chrome available)
+const IS_CLOUD = process.env.RENDER || process.env.NODE_ENV === 'production';
+
 // State
 let lastKnownTemp: number | null = null;
 let lastSavedTime = 0;
 const SAVE_INTERVAL = 60 * 60 * 1000; // 1 hour
 
 export async function runWeatherScraper(prisma: PrismaClient) {
+    // Skip on cloud - use local weather_scraper instead
+    if (IS_CLOUD) {
+        console.log('[Scraper] Skipping - Chrome not available on cloud. Use local weather_scraper.');
+        return;
+    }
+
     console.log('[Scraper] Starting weather check...');
 
     let browser = null;
