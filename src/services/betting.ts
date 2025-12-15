@@ -1,11 +1,31 @@
 
 import { ClobClient, Side } from '@polymarket/clob-client';
 import { ethers } from 'ethers';
+import axios from 'axios';
+import { HttpsProxyAgent } from 'https-proxy-agent';
 
 const CLOB_API = 'https://clob.polymarket.com';
 const GAMMA_API = 'https://gamma-api.polymarket.com';
 const POLYGON_RPC = process.env.RPC_URL || 'https://polygon-rpc.com';
 const DEFAULT_BET_SIZE = parseInt(process.env.BET_SIZE || '5');
+
+// Proxy configuration (set PROXY_URL in environment to route through proxy)
+const PROXY_URL = process.env.PROXY_URL; // e.g., "http://user:pass@proxy.example.com:8080"
+
+// Configure global axios to use proxy for CLOB API calls
+if (PROXY_URL) {
+    console.log('[Bot] 🌐 Proxy configured:', PROXY_URL.replace(/:[^:@]+@/, ':****@'));
+    const proxyAgent = new HttpsProxyAgent(PROXY_URL);
+
+    axios.interceptors.request.use((config) => {
+        // Only use proxy for Polymarket CLOB API
+        if (config.url?.includes('clob.polymarket.com')) {
+            config.httpsAgent = proxyAgent;
+            config.proxy = false; // Disable axios built-in proxy to use agent
+        }
+        return config;
+    });
+}
 
 // Builder API Credentials (from Polymarket Builder Settings)
 const BUILDER_API_KEY = process.env.POLYMARKET_API_KEY;
