@@ -179,6 +179,13 @@ fastify.get('/markets/search', async (request, reply) => {
         }
 
         const event = data[0];
+
+        // DEBUG: Log raw market data
+        console.log('[Markets Search] Raw markets from Gamma:', JSON.stringify(event.markets.map((m: any) => ({
+            title: m.groupItemTitle || m.question,
+            clobTokenIds: m.clobTokenIds
+        })), null, 2));
+
         const markets = event.markets.map((m: any) => ({
             id: m.id,
             title: m.groupItemTitle || m.question,
