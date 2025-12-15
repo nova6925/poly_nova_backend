@@ -156,6 +156,71 @@ fastify.get('/weather/logs', async () => {
     return logs;
 });
 
+// ========== MARKET BETTING API ==========
+
+const GAMMA_API = 'https://gamma-api.polymarket.com';
+const BOT_API = process.env.BOT_API_URL || 'http://localhost:4000';
+
+// Search Markets by Slug (Proxy to Gamma API)
+fastify.get('/markets/search', async (request, reply) => {
+    const { slug } = request.query as { slug?: string };
+
+    if (!slug) {
+        return reply.code(400).send({ error: 'slug parameter required' });
+    }
+
+    try {
+        const res = await fetch(`${GAMMA_API}/events?slug=${encodeURIComponent(slug)}`);
+        const data = await res.json();
+
+        if (!data || data.length === 0) {
+            return reply.code(404).send({ error: 'Event not found' });
+        }
+
+        const event = data[0];
+        const markets = event.markets.map((m: any) => ({
+            id: m.id,
+            title: m.groupItemTitle || m.question,
+            tokenId: m.clobTokenIds?.[0] || null,
+            outcome: m.outcome,
+            active: m.active
+        }));
+
+        return {
+            eventId: event.id,
+            eventTitle: event.title,
+            markets
+        };
+    } catch (err: any) {
+        return reply.code(500).send({ error: err.message });
+    }
+});
+
+// Place Bet (Forward to Bot)
+fastify.post('/markets/bet', async (request, reply) => {
+    const body = request.body as { tokenId: string; amount: number; side: string; marketTitle?: string };
+
+    if (!body.tokenId || !body.amount) {
+        return reply.code(400).send({ error: 'tokenId and amount required' });
+    }
+
+    try {
+        const res = await fetch(`${BOT_API}/bet`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                market: body.marketTitle || 'Unknown',
+                amount: body.amount,
+                side: body.side || 'YES'
+            })
+        });
+        const data = await res.json();
+        return data;
+    } catch (err: any) {
+        return reply.code(500).send({ error: `Bot unreachable: ${err.message}` });
+    }
+});
+
 // Root route
 fastify.get('/', async () => {
     return { status: 'ok', message: 'Poly Nova Backend is running' };
