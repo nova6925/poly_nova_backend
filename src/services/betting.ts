@@ -7,10 +7,61 @@ const GAMMA_API = 'https://gamma-api.polymarket.com';
 const POLYGON_RPC = process.env.RPC_URL || 'https://polygon-rpc.com';
 const DEFAULT_BET_SIZE = parseInt(process.env.BET_SIZE || '5');
 
-// Builder API Credentials (from Polymarket Builder Settings)
-const BUILDER_API_KEY = process.env.POLYMARKET_API_KEY;
-const BUILDER_API_SECRET = process.env.POLYMARKET_API_SECRET;
-const BUILDER_PASSPHRASE = process.env.POLYMARKET_PASSPHRASE;
+// CLOB API Credentials (auto-generated if not provided)
+let CLOB_API_KEY = process.env.POLYMARKET_API_KEY;
+let CLOB_API_SECRET = process.env.POLYMARKET_API_SECRET;
+let CLOB_PASSPHRASE = process.env.POLYMARKET_PASSPHRASE;
+let credentialsInitialized = false;
+
+// Initialize/derive CLOB credentials on server start
+export async function initClobCredentials(): Promise<boolean> {
+    if (credentialsInitialized && CLOB_API_KEY && CLOB_API_SECRET && CLOB_PASSPHRASE) {
+        return true;
+    }
+
+    const privateKey = process.env.PRIVATE_KEY;
+    if (!privateKey) {
+        console.log('[Bot] ❌ PRIVATE_KEY not set. Cannot create CLOB credentials.');
+        return false;
+    }
+
+    console.log('[Bot] 🔐 Initializing CLOB API credentials...');
+
+    try {
+        const provider = new ethers.providers.JsonRpcProvider(POLYGON_RPC);
+        const wallet = new ethers.Wallet(privateKey, provider);
+        console.log(`[Bot] Wallet: ${wallet.address}`);
+
+        // Create client without credentials to generate/derive them
+        const client = new ClobClient(CLOB_API, 137, wallet as any);
+
+        try {
+            // Try to derive existing credentials first
+            const creds = await client.deriveApiKey();
+            console.log('[Bot] Derived creds:', JSON.stringify(creds, null, 2));
+            CLOB_API_KEY = creds.key;
+            CLOB_API_SECRET = creds.secret;
+            CLOB_PASSPHRASE = creds.passphrase;
+            console.log('[Bot] ✅ Derived existing CLOB credentials');
+        } catch {
+            console.log('[Bot] Creating new CLOB credentials...');
+            const creds = await client.createApiKey();
+            console.log('[Bot] Created creds:', JSON.stringify(creds, null, 2));
+            CLOB_API_KEY = creds.key;
+            CLOB_API_SECRET = creds.secret;
+            CLOB_PASSPHRASE = creds.passphrase;
+            console.log('[Bot] ✅ Created new CLOB credentials');
+        }
+
+        console.log(`[Bot] API Key: ${CLOB_API_KEY?.substring(0, 8)}...`);
+        credentialsInitialized = true;
+        return true;
+
+    } catch (err: any) {
+        console.error('[Bot] ❌ Failed to initialize CLOB credentials:', err.message);
+        return false;
+    }
+}
 
 // State
 let currentBetMarketId = "";
@@ -69,9 +120,17 @@ function mapTempToMarket(temp: number, markets: any[]) {
 export async function placeBet(request: BetRequest) {
     const { marketTitle, amount = DEFAULT_BET_SIZE, side = 'YES' } = request;
 
-    // Check for Builder API credentials AND private key
-    if (!BUILDER_API_KEY || !process.env.PRIVATE_KEY) {
-        console.log(`[Bot] ⚠️ SIMULATION: Missing API key or private key. Would BUY ${side} on "${marketTitle}" for $${amount}`);
+    // Ensure CLOB credentials are initialized
+    if (!CLOB_API_KEY || !CLOB_API_SECRET || !CLOB_PASSPHRASE) {
+        const initialized = await initClobCredentials();
+        if (!initialized) {
+            console.log(`[Bot] ⚠️ SIMULATION: CLOB credentials not available. Would BUY ${side} on "${marketTitle}" for $${amount}`);
+            return { simulated: true, market: marketTitle, amount, side };
+        }
+    }
+
+    if (!process.env.PRIVATE_KEY) {
+        console.log(`[Bot] ⚠️ SIMULATION: Missing private key. Would BUY ${side} on "${marketTitle}" for $${amount}`);
         return { simulated: true, market: marketTitle, amount, side };
     }
 
@@ -82,9 +141,9 @@ export async function placeBet(request: BetRequest) {
 
         // Initialize CLOB Client with BOTH wallet (for signing) AND API credentials (for auth)
         const client = new ClobClient(CLOB_API, 137, wallet as any, {
-            key: BUILDER_API_KEY,
-            secret: BUILDER_API_SECRET!,
-            passphrase: BUILDER_PASSPHRASE!
+            key: CLOB_API_KEY!,
+            secret: CLOB_API_SECRET!,
+            passphrase: CLOB_PASSPHRASE!
         });
 
         console.log(`[Bot] 💸 PLACING ORDER: BUY ${side} on "${marketTitle}" for $${amount}`);

@@ -8,7 +8,7 @@ import { collectForecasts } from './services/weather/collector';
 import { resolveWeather } from './services/weather/actual-weather';
 import { calculateAccuracy } from './services/weather/accuracy';
 import { runWeatherScraper } from './services/weather/scraper';
-import { placeBet, handleWeatherTrigger } from './services/betting';
+import { placeBet, handleWeatherTrigger, initClobCredentials } from './services/betting';
 
 
 // Fix BigInt serialization
@@ -299,6 +299,9 @@ const start = async () => {
 
         // Initialize Tracker Cache
         await initializeTracker(prisma);
+
+        // Initialize CLOB credentials for betting
+        await initClobCredentials();
 
         // Schedule Watcher (RSS) - Every 1 minute
         cron.schedule('* * * * *', async () => {
