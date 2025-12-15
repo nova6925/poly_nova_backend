@@ -56,10 +56,14 @@ export async function initClobCredentials(): Promise<boolean> {
         // Create or derive API credentials
         const creds = await client.createOrDeriveApiCreds();
 
-        console.log('[Bot] ✅ CLOB credentials regenerated!');
-        console.log(`[Bot] New API Key: ${creds.key}`);
+        console.log('[Bot] ✅ NEW CLOB CREDENTIALS GENERATED! ADD THESE TO RAILWAY:');
+        console.log('='.repeat(60));
+        console.log(`POLYMARKET_API_KEY=${creds.key}`);
+        console.log(`POLYMARKET_API_SECRET=${creds.secret}`);
+        console.log(`POLYMARKET_PASSPHRASE=${creds.passphrase}`);
+        console.log('='.repeat(60));
 
-        // Cache the new credentials
+        // Cache the new credentials for this session
         cachedApiKey = creds.key;
         cachedApiSecret = creds.secret;
         cachedPassphrase = creds.passphrase;
