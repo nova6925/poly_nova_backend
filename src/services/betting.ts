@@ -7,6 +7,11 @@ const GAMMA_API = 'https://gamma-api.polymarket.com';
 const POLYGON_RPC = process.env.RPC_URL || 'https://polygon-rpc.com';
 const DEFAULT_BET_SIZE = parseInt(process.env.BET_SIZE || '5');
 
+// Builder API Credentials (from Polymarket Builder Settings)
+const BUILDER_API_KEY = process.env.POLYMARKET_API_KEY;
+const BUILDER_API_SECRET = process.env.POLYMARKET_API_SECRET;
+const BUILDER_PASSPHRASE = process.env.POLYMARKET_PASSPHRASE;
+
 // State
 let currentBetMarketId = "";
 
@@ -64,17 +69,20 @@ function mapTempToMarket(temp: number, markets: any[]) {
 export async function placeBet(request: BetRequest) {
     const { marketTitle, amount = DEFAULT_BET_SIZE, side = 'YES' } = request;
 
-    if (!process.env.PRIVATE_KEY || process.env.PRIVATE_KEY === 'YOUR_PRIVATE_KEY_HERE') {
-        console.log(`[Bot] ⚠️ SIMULATION: Would BUY ${side} on "${marketTitle}" for $${amount}`);
+    // Check for Builder API credentials first
+    if (!BUILDER_API_KEY) {
+        console.log(`[Bot] ⚠️ SIMULATION: No API key configured. Would BUY ${side} on "${marketTitle}" for $${amount}`);
         return { simulated: true, market: marketTitle, amount, side };
     }
 
     try {
-        const provider = new ethers.JsonRpcProvider(POLYGON_RPC);
-        const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
-        const client = new ClobClient(CLOB_API, 137, wallet as any);
+        // Initialize CLOB Client with Builder API credentials
+        const client = new ClobClient(CLOB_API, 137, undefined, {
+            key: BUILDER_API_KEY,
+            secret: BUILDER_API_SECRET!,
+            passphrase: BUILDER_PASSPHRASE!
+        });
 
-        await client.deriveApiKey();
         console.log(`[Bot] 💸 PLACING ORDER: BUY ${side} on "${marketTitle}" for $${amount}`);
 
         // REAL BETTING ENABLED
