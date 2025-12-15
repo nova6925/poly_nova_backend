@@ -16,19 +16,64 @@ const CLOB_PASSPHRASE = process.env.POLYMARKET_PASSPHRASE;
 // This is different from your MetaMask EOA wallet
 const PROXY_WALLET = process.env.POLYMARKET_PROXY_WALLET;
 
-// Placeholder for init function (credentials now from env)
+// Cached credentials (can be auto-regenerated)
+let cachedApiKey = CLOB_API_KEY;
+let cachedApiSecret = CLOB_API_SECRET;
+let cachedPassphrase = CLOB_PASSPHRASE;
+
+// Initialize and auto-regenerate CLOB credentials if needed
 export async function initClobCredentials(): Promise<boolean> {
-    if (CLOB_API_KEY && CLOB_API_SECRET && CLOB_PASSPHRASE) {
-        console.log(`[Bot] ✅ CLOB credentials loaded from env (Key: ${CLOB_API_KEY.substring(0, 8)}...)`);
+    // If credentials are already set from env, use them
+    if (cachedApiKey && cachedApiSecret && cachedPassphrase) {
+        console.log(`[Bot] ✅ CLOB credentials loaded (Key: ${cachedApiKey.substring(0, 8)}...)`);
         return true;
     }
-    console.log('[Bot] ❌ CLOB credentials not set in environment');
-    return false;
+
+    // Auto-regenerate credentials with correct signature type
+    const privateKey = process.env.PRIVATE_KEY;
+    if (!privateKey) {
+        console.log('[Bot] ❌ PRIVATE_KEY not set, cannot regenerate credentials');
+        return false;
+    }
+
+    if (!PROXY_WALLET) {
+        console.log('[Bot] ❌ POLYMARKET_PROXY_WALLET not set, cannot regenerate credentials');
+        return false;
+    }
+
+    console.log('[Bot] 🔐 Auto-regenerating CLOB credentials with GNOSIS_SAFE...');
+
+    try {
+        const provider = new ethers.providers.JsonRpcProvider(POLYGON_RPC);
+        const wallet = new ethers.Wallet(privateKey, provider);
+
+        console.log(`[Bot] Signer (MetaMask): ${wallet.address}`);
+        console.log(`[Bot] Funder (Proxy): ${PROXY_WALLET}`);
+
+        // Initialize client with signature_type=2 (GNOSIS_SAFE) and proxy wallet
+        const client = new ClobClient(CLOB_API, 137, wallet as any, undefined, 2, PROXY_WALLET);
+
+        // Create or derive API credentials
+        const creds = await client.createOrDeriveApiCreds();
+
+        console.log('[Bot] ✅ CLOB credentials regenerated!');
+        console.log(`[Bot] New API Key: ${creds.key}`);
+
+        // Cache the new credentials
+        cachedApiKey = creds.key;
+        cachedApiSecret = creds.secret;
+        cachedPassphrase = creds.passphrase;
+
+        return true;
+    } catch (err: any) {
+        console.error('[Bot] ❌ Failed to regenerate credentials:', err.message);
+        return false;
+    }
 }
 
 // Get wallet balance from Polymarket
 export async function getBalance(): Promise<{ usdc: number; positions: any[] } | null> {
-    if (!CLOB_API_KEY || !CLOB_API_SECRET || !CLOB_PASSPHRASE || !process.env.PRIVATE_KEY) {
+    if (!cachedApiKey || !cachedApiSecret || !cachedPassphrase || !process.env.PRIVATE_KEY) {
         console.log('[Bot] Cannot get balance: credentials not set');
         return null;
     }
@@ -39,9 +84,9 @@ export async function getBalance(): Promise<{ usdc: number; positions: any[] } |
         const funderAddress = PROXY_WALLET || wallet.address;
 
         const client = new ClobClient(CLOB_API, 137, wallet as any, {
-            key: CLOB_API_KEY,
-            secret: CLOB_API_SECRET,
-            passphrase: CLOB_PASSPHRASE
+            key: cachedApiKey,
+            secret: cachedApiSecret,
+            passphrase: cachedPassphrase
         }, PROXY_WALLET ? 2 : 0, funderAddress);
 
         // Get USDC balance
@@ -141,9 +186,9 @@ export async function placeBet(request: BetRequest) {
 
         // Initialize CLOB Client with wallet (for signing) AND API credentials (for auth)
         const client = new ClobClient(CLOB_API, 137, wallet as any, {
-            key: CLOB_API_KEY!,
-            secret: CLOB_API_SECRET!,
-            passphrase: CLOB_PASSPHRASE!
+            key: cachedApiKey!,
+            secret: cachedApiSecret!,
+            passphrase: cachedPassphrase!
         }, PROXY_WALLET ? 2 : 0, funderAddress);  // signature_type: 2=GNOSIS_SAFE if proxy, 0=EOA otherwise
 
         console.log(`[Bot] 💸 PLACING ORDER: BUY ${side} on "${marketTitle}" for $${amount}`);
